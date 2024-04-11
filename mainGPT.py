@@ -56,9 +56,10 @@ def transcribe_audio_from_mic():
 			response_format="text"
 		)
 
-	print("Transcription response:", transcription_response)
+	transcription = transcription_response
+	print("Transcription response:", transcription)
 
-	return transcription_response
+	return transcription
 
 def get_chatgpt_response(prompt):
 	"""Gets a response from ChatGPT"""
@@ -82,17 +83,26 @@ def speak_chatgpt_response(chatgpt_response):
 	with open(speech_file_path, "wb") as f:
 		f.write(response.content)
 
-	# Play the audio file using ffplay directly in the terminal and wait until it's finished
-	subprocess.run(["ffplay", "-nodisp", "-autoexit", str(speech_file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+	# Play the audio file using ffplay directly in the terminal
+	player_process = subprocess.Popen(["ffplay", "-nodisp", "-autoexit", str(speech_file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+
+	# Check if space is pressed to stop playback, otherwise wait for the audio to finish
+	while player_process.poll() is None:
+		if keyboard.is_pressed('space'):
+			player_process.terminate()
+			break
+
+def main_loop():
+	while True:
+		transcription = transcribe_audio_from_mic()
+		if transcription.strip().lower() in ["exit", "exit.", "Exit", "Exit."]:
+			print("Exiting...")
+			break
+		elif transcription:
+			chatgpt_response = get_chatgpt_response(transcription)
+			print("ChatGPT:", chatgpt_response)
+			speak_chatgpt_response(chatgpt_response)
 
 # Main program loop
 if __name__ == "__main__":
-	while True:
-		prompt = transcribe_audio_from_mic()
-		if prompt.lower() in ["exit", "exit.", "Exit", "Exit."]:
-			print("Exiting...")
-			break
-		elif prompt:
-			chatgpt_response = get_chatgpt_response(prompt)
-			print("ChatGPT:", chatgpt_response)
-			speak_chatgpt_response(chatgpt_response)
+	main_loop()
