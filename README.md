@@ -25,7 +25,3 @@
 ## Demo
 
 https://github.com/EA914/ChatGPT-TTS-Assistant/assets/14112758/b7d45ccf-e378-4ca5-a065-19d8d636de99
-
-
-### Requirements
-* see requirements.txt file
