@@ -1,10 +1,11 @@
 import os
-from pathlib import Path
+import pyaudio
+import wave
 import openai
 import subprocess
-import speech_recognition as sr
+from pathlib import Path
 from dotenv import load_dotenv
-import keyboard	
+import keyboard
 
 # Load environment variables from .env file
 load_dotenv()
@@ -13,24 +14,51 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 # Set the OpenAI API key
 openai.api_key = OPENAI_API_KEY
 
-# Initialize the speech recognition engine
-recognizer = sr.Recognizer()
-
 def transcribe_audio_from_mic():
-	with sr.Microphone() as source:
-		print("Speak something:")
-		audio = recognizer.listen(source)
+	# Set up audio recording parameters
+	FORMAT = pyaudio.paInt16
+	CHANNELS = 1
+	RATE = 16000
+	CHUNK = 1024
 
-	try:
-		text = recognizer.recognize_google(audio)
-		print("You said:", text)
-		return text
-	except sr.UnknownValueError:
-		print("Could not understand audio")
-		return ""
-	except sr.RequestError as e:
-		print(f"Error from recognition service: {e}")
-		return ""
+	# Initialize PyAudio and start recording
+	audio = pyaudio.PyAudio()
+	stream = audio.open(format=FORMAT, channels=CHANNELS, rate=RATE, input=True, frames_per_buffer=CHUNK)
+
+	print("Recording... Press Enter to stop.")
+
+	frames = []
+	while True:
+		data = stream.read(CHUNK)
+		frames.append(data)
+		if keyboard.is_pressed('enter'):  # Stop recording when Enter key is pressed
+			print("Stop recording.")
+			break
+
+	# Stop and close the stream and PyAudio
+	stream.stop_stream()
+	stream.close()
+	audio.terminate()
+
+	# Save the recorded frames as a WAV file
+	wav_file_path = Path(__file__).parent / "temp_recording.wav"
+	with wave.open(str(wav_file_path), 'wb') as wf:
+		wf.setnchannels(CHANNELS)
+		wf.setsampwidth(audio.get_sample_size(FORMAT))
+		wf.setframerate(RATE)
+		wf.writeframes(b''.join(frames))
+
+	# Transcribe the audio using OpenAI's Whisper model
+	with open(wav_file_path, 'rb') as audio_file:
+		transcription_response = openai.audio.transcriptions.create(
+			model="whisper-1",
+			file=audio_file,
+			response_format="text"
+		)
+
+	print("Transcription response:", transcription_response)
+
+	return transcription_response
 
 def get_chatgpt_response(prompt):
 	"""Gets a response from ChatGPT"""
@@ -54,23 +82,17 @@ def speak_chatgpt_response(chatgpt_response):
 	with open(speech_file_path, "wb") as f:
 		f.write(response.content)
 
-	# Play the audio file using ffplay directly in the terminal
-	subprocess.Popen(["ffplay", "-nodisp", "-autoexit", str(speech_file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-
-def keyboard_interrupt():
-	keyboard.wait('space')
-	# Suppress the output of the taskkill command
-	with open(os.devnull, 'w') as devnull:
-		subprocess.run(["taskkill", "/IM", "ffplay.exe", "/F"], stdout=devnull, stderr=devnull)
+	# Play the audio file using ffplay directly in the terminal and wait until it's finished
+	subprocess.run(["ffplay", "-nodisp", "-autoexit", str(speech_file_path)], stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
 
 # Main program loop
 if __name__ == "__main__":
 	while True:
 		prompt = transcribe_audio_from_mic()
-		if prompt.lower() == "exit":
+		if prompt.lower() in ["exit", "exit.", "Exit", "Exit."]:
+			print("Exiting...")
 			break
 		elif prompt:
 			chatgpt_response = get_chatgpt_response(prompt)
 			print("ChatGPT:", chatgpt_response)
 			speak_chatgpt_response(chatgpt_response)
-			keyboard_interrupt()
