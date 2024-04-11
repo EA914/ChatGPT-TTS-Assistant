@@ -4,7 +4,15 @@
 * [FFMPEG](https://ffmpeg.org/)
 
 ## APIs Used:
-[OpenAI API](https://platform.openai.com/docs/overview)
+* [OpenAI API](https://platform.openai.com/docs/overview)
+
+## Endpoints:
+* [OpenAI Chat](https://platform.openai.com/docs/api-reference/chat)
+  * [Chat Completion](https://platform.openai.com/docs/api-reference/chat/create)
+* [OpenAI Audio](https://platform.openai.com/docs/api-reference/audio)
+  * [Speech](https://platform.openai.com/docs/api-reference/audio/createSpeech)
+  * [Transcription](https://platform.openai.com/docs/api-reference/audio/createTranscription)
+
 
 ### .env file contains OpenAI API key
 
@@ -15,7 +23,5 @@
 * Say "exit" to exit the program
 
 ## Demo
-
-
 https://github.com/EA914/ChatGPT-TTS-Assistant/assets/14112758/cc13fac7-a918-4e17-a639-4e92c70d8184
 
